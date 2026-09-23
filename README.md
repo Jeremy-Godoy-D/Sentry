@@ -18,10 +18,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jacksonandresrosales/Sentry/releases">Descargar</a> ·
   <a href="ARQUITECTURA.md">Arquitectura</a> ·
   <a href="SPECS.md">Especificaciones</a> ·
   <a href="https://github.com/jacksonandresrosales/Sentry/issues">Reportar un problema</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/jacksonandresrosales/Sentry/releases/latest/download/Sentry_Setup.exe"><img src="https://img.shields.io/badge/Descargar-Sentry%20para%20Windows-27953c?style=for-the-badge&logo=windows&logoColor=white" alt="Descargar Sentry para Windows"></a>
 </p>
 
 ---
@@ -54,7 +57,7 @@ La aplicación está orientada al uso interno de Ecuaconexión. Puede procesar i
 
 ## Instalación recomendada
 
-Descarga el instalador más reciente desde [Releases](https://github.com/jacksonandresrosales/Sentry/releases) y ejecútalo. El instalador incluye Python, Qt, WinSCP y las dependencias necesarias.
+Pulsa **Descargar** arriba y ejecuta el instalador. Incluye Python, Qt, WinSCP y las dependencias necesarias.
 
 La instalación:
 
@@ -197,13 +200,13 @@ Construye el instalador con:
 .\Construir_EXE.cmd
 ```
 
-El resultado se genera en `dist\Sentry_Setup_<versión>.exe`.
+El resultado se genera en `dist\Sentry_Setup_<versión>.exe`. La compilación crea también `dist\Sentry_Setup.exe`, una copia para el botón de descarga del README.
 
 Para publicar una versión:
 
 1. Actualiza `APP_VERSION` en `app/about.py` y ejecuta las pruebas.
 2. Crea un Release con la etiqueta `v<versión>` apuntando al commit correspondiente de `main`.
-3. Adjunta el instalador, `sentry-update.json` y `SHA256SUMS`.
+3. Adjunta `Sentry_Setup_<versión>.exe`, `Sentry_Setup.exe`, `sentry-update.json` y `SHA256SUMS`. El archivo de nombre fijo permite descargar directamente el instalador del último Release; el actualizador utiliza el archivo con versión.
 4. Valida la actualización en una instalación limpia antes de distribuirla.
 
 La verificación SHA-256 comprueba integridad, pero no sustituye una firma digital de código.
