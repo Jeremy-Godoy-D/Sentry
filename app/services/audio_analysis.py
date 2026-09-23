@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import mimetypes
+from contextvars import ContextVar
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -24,6 +25,7 @@ _IN_FLIGHT: dict[tuple[str, str, str], Future] = {}
 _IN_FLIGHT_LOCK = threading.Lock()
 _PROVIDER_COOLDOWNS: dict[str, float] = {}
 _PROVIDER_LOCK = threading.Lock()
+_COST_CONTEXT: ContextVar[dict | None] = ContextVar('sentry_cost_context', default=None)
 
 
 class AnalysisError(RuntimeError):
@@ -147,9 +149,30 @@ def _request(method, url, *, retries=3, **kwargs):
         else:
             if response.status_code < 400:
                 try:
-                    return response.json()
+                    payload = response.json()
                 except ValueError as exc:
                     raise AnalysisError("La API devolvió una respuesta que no es JSON.") from exc
+                context = _COST_CONTEXT.get()
+                if context is not None and isinstance(payload, dict):
+                    if 'api.deepgram.com/v1/listen' in url:
+                        service, provider = 'transcription', 'deepgram'
+                    elif 'api.openai.com/v1/audio/transcriptions' in url:
+                        service, provider = 'transcription', 'openai'
+                    elif 'generativelanguage.googleapis.com/' in url:
+                        service, provider = 'analysis', 'gemini'
+                    elif 'api.openai.com/v1/chat/completions' in url:
+                        service, provider = 'analysis', 'openai'
+                    elif 'api.deepseek.com/chat/completions' in url:
+                        service, provider = 'analysis', 'deepseek'
+                    else:
+                        return payload
+                    context['database'].record_api_usage(
+                        context['path'], service, provider, context['config'][f'{service}_model'],
+                        payload, context['duration_seconds'],
+                        keyterm=(provider == 'deepgram' and any(
+                            item[0] == 'keyterm' for item in (kwargs.get('params') or ()))),
+                    )
+                return payload
             message = ""
             try:
                 body = response.json()
@@ -365,6 +388,23 @@ def _openai_analysis(text: str, keywords: list[str], key: str, model: str):
         raise AnalysisError("OpenAI no devolvió un análisis estructurado válido.") from exc
 
 
+def _deepseek_analysis(text: str, keywords: list[str], key: str, model: str):
+    prompt = (_prompt(text, keywords) + "\nDevuelve un objeto JSON válido con las claves category, summary, "
+             "sentiment, risk y validated_keywords. Ejemplo: "
+             '{"category":"NORMAL","summary":"Resumen breve","sentiment":"NEUTRAL",'
+             '"risk":"BAJO","validated_keywords":[]}')
+    payload = _request("POST", "https://api.deepseek.com/chat/completions",
+                       headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                       json={"model": model, "messages": [{"role": "user", "content": prompt}],
+                             "max_tokens": 320, "thinking": {"type": "disabled"},
+                             "response_format": {"type": "json_object"}})
+    try:
+        content = payload["choices"][0]["message"]["content"]
+        return json.loads(content)
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise AnalysisError("DeepSeek no devolvió un análisis estructurado válido.") from exc
+
+
 def contextual_analysis(transcript, keywords: list[str], provider: str, key: str, model: str):
     text = transcript.get("text", "").strip()
     word_count = len(re.findall(r"\w+", text, re.UNICODE))
@@ -390,6 +430,8 @@ def contextual_analysis(transcript, keywords: list[str], provider: str, key: str
         result = _gemini_analysis(excerpt, candidates, key, model)
     elif provider == "openai":
         result = _openai_analysis(excerpt, candidates, key, model)
+    elif provider == "deepseek":
+        result = _deepseek_analysis(excerpt, candidates, key, model)
     else:
         raise AnalysisError(f"Proveedor de análisis no compatible: {provider}")
     if result.get("category") not in {"ALERTA", "NORMAL"}:
@@ -409,6 +451,18 @@ def contextual_analysis(transcript, keywords: list[str], provider: str, key: str
 
 
 def analyze_file(database, path: Path, config: dict, digest: str | None = None):
+    path = Path(path).resolve(strict=True)
+    with database.connect() as connection:
+        row = connection.execute('SELECT duration_seconds FROM calls WHERE file_path=?', (str(path),)).fetchone()
+    token = _COST_CONTEXT.set({'database': database, 'path': path, 'config': config,
+                               'duration_seconds': row[0] if row else None})
+    try:
+        return _analyze_file(database, path, config, digest)
+    finally:
+        _COST_CONTEXT.reset(token)
+
+
+def _analyze_file(database, path: Path, config: dict, digest: str | None = None):
     started = time.perf_counter()
     path = Path(path).resolve(strict=True)
     hash_started = time.perf_counter()

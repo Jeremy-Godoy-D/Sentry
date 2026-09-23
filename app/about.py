@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 APP_NAME = "Sentry"
-APP_VERSION = "0.1.0-beta.9"
+APP_VERSION = "1.0.0"
 UPDATE_REPOSITORY = "jacksonandresrosales/Sentry"
 APP_AUTHORS = "Jackson Ocaña y Jeremy Godoy"
 APP_DESCRIPTION = (
@@ -12,12 +12,11 @@ APP_DESCRIPTION = (
     "para facilitar la revisión y el seguimiento de cada caso."
 )
 APP_FEATURES = (
-    ("Verificación de cualquier llamada analizada", "Marca llamadas normales y buzones como denuncias verificadas. La decisión se conserva en los análisis y reportes; quitarla restaura la última clasificación automática."),
-    ("Reevaluación automática", "Al agregar o modificar términos sensibles, las llamadas ya analizadas se revisan sin volver a transcribir el mismo audio. Los buzones también pueden convertirse en denuncias cuando se confirma riesgo."),
-    ("Menús solo con clic", "La rueda del mouse no cambia proveedor, modelo ni otros selectores. Esos listados se abren únicamente al hacer clic."),
-    ("Notas automáticas", "Acerca de consulta en GitHub los cambios publicados para la versión instalada."),
-    ("Historial de versiones", "El selector de versión permite revisar las novedades de publicaciones anteriores."),
-    ("Licencia integrada", "La licencia propietaria puede consultarse sin salir de la aplicación."),
+    ("Costes API", "Consulta el gasto estimado diario de transcripción y análisis, con colores por servicio, detalle por solicitud y tarifas aplicadas automáticamente."),
+    ("Exportación de costes", "Exporta a Excel el resumen, los gastos diarios, todas las solicitudes del filtro y las tarifas de referencia y aplicadas."),
+    ("Modelos recomendados", "Deepgram Nova-3 transcribe; Gemini 3.5 Flash o DeepSeek V4.1 Flash analizan. Los modelos admitidos quedan fijados en Configuración."),
+    ("Configuración de Issabel", "La conexión SFTP reúne servidor, puerto, usuario, contraseña y carpeta remota en un solo formulario."),
+    ("Interfaz", "Se eliminó el borde verde que aparecía junto al desplazamiento en Reportes y Costes API."),
 )
 
 

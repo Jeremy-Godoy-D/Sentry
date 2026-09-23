@@ -92,6 +92,7 @@ class ActivityChart(QWidget):
 class ReportsPage(QScrollArea):
     def __init__(self, database, parent=None):
         super().__init__(parent)
+        self.setObjectName('reportsScroll')
         self.database, self.worker, self.result = database, None, None
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
