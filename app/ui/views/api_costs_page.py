@@ -160,6 +160,7 @@ class CostChart(QWidget):
 
 class ApiCostsPage(QScrollArea):
     PROVIDER_LABELS = {'deepgram': 'Deepgram', 'gemini': 'Gemini', 'deepseek': 'DeepSeek',
+                       'groq': 'Groq',
                        'openai': 'OpenAI'}
 
     def __init__(self, database, parent=None):
@@ -184,7 +185,7 @@ class ApiCostsPage(QScrollArea):
         header.addStretch()
         outer.addLayout(header)
         subtitle = QLabel('Gasto estimado en USD: Deepgram Nova-3 para transcripción; '
-                          'Gemini 3.5 Flash o DeepSeek V4.1 Flash para análisis.')
+                          'Gemini 3.5 Flash, DeepSeek V4.1 Flash o Groq GPT-OSS 120B para análisis.')
         subtitle.setObjectName('pageSubtitle')
         subtitle.setWordWrap(True)
         outer.addWidget(subtitle)
@@ -303,7 +304,8 @@ class ApiCostsPage(QScrollArea):
         note = QLabel('Sentry calcula automáticamente el importe de cada solicitud usando su consumo y la tarifa de referencia vigente en la aplicación. '
                       'Deepgram añade el precio de Keyterm cuando se envían términos; DeepSeek aplica sus franjas pico y fuera de pico en UTC. '
                       'Las respuestas reutilizadas desde caché no generan otra solicitud. Los importes son estimados y pueden diferir de la '
-                      'factura por planes, créditos, impuestos o cambios de tarifa. “Sin estimación” indica un dato de uso o tarifa faltante.')
+                      'factura por planes, créditos, impuestos o cambios de tarifa; en el plan gratis de Groq '
+                      'puede no existir un cargo real. “Sin estimación” indica un dato de uso o tarifa faltante.')
         note.setObjectName('pageSubtitle')
         note.setWordWrap(True)
         outer.addWidget(note)

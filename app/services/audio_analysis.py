@@ -164,6 +164,8 @@ def _request(method, url, *, retries=3, **kwargs):
                         service, provider = 'analysis', 'openai'
                     elif 'api.deepseek.com/chat/completions' in url:
                         service, provider = 'analysis', 'deepseek'
+                    elif 'api.groq.com/openai/v1/chat/completions' in url:
+                        service, provider = 'analysis', 'groq'
                     else:
                         return payload
                     context['database'].record_api_usage(
@@ -405,6 +407,20 @@ def _deepseek_analysis(text: str, keywords: list[str], key: str, model: str):
         raise AnalysisError("DeepSeek no devolvió un análisis estructurado válido.") from exc
 
 
+def _groq_analysis(text: str, keywords: list[str], key: str, model: str):
+    payload = _request("POST", "https://api.groq.com/openai/v1/chat/completions",
+                       headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                       json={"model": model, "messages": [{"role": "user", "content": _prompt(text, keywords)}],
+                             "reasoning_effort": "low", "include_reasoning": False,
+                             "max_completion_tokens": 768,
+                             "response_format": {"type": "json_schema", "json_schema": {
+                                 "name": "clasificacion_llamada", "strict": True, "schema": RESULT_SCHEMA}}})
+    try:
+        return json.loads(payload["choices"][0]["message"]["content"])
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise AnalysisError("Groq no devolvió un análisis estructurado válido.") from exc
+
+
 def contextual_analysis(transcript, keywords: list[str], provider: str, key: str, model: str):
     text = transcript.get("text", "").strip()
     word_count = len(re.findall(r"\w+", text, re.UNICODE))
@@ -432,6 +448,8 @@ def contextual_analysis(transcript, keywords: list[str], provider: str, key: str
         result = _openai_analysis(excerpt, candidates, key, model)
     elif provider == "deepseek":
         result = _deepseek_analysis(excerpt, candidates, key, model)
+    elif provider == "groq":
+        result = _groq_analysis(excerpt, candidates, key, model)
     else:
         raise AnalysisError(f"Proveedor de análisis no compatible: {provider}")
     if result.get("category") not in {"ALERTA", "NORMAL"}:

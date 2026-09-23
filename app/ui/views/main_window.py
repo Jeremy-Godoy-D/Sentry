@@ -1880,14 +1880,18 @@ class SentryWindow(QMainWindow):
         self.analysis_provider = QComboBox()
         self.analysis_provider.addItem("Google Gemini", "gemini")
         self.analysis_provider.addItem("DeepSeek", "deepseek")
+        self.analysis_provider.addItem("Otros proveedores")
+        self.analysis_provider.model().item(self.analysis_provider.count() - 1).setEnabled(False)
+        self.analysis_provider.addItem("Groq · GPT-OSS 120B", "groq")
         self._select_provider(self.analysis_provider, os.getenv("SENTRY_ANALYSIS_PROVIDER", "gemini"))
         self.analysis_model = QComboBox()
         self.analysis_model.setEditable(False)
         analysis_provider = str(self.analysis_provider.currentData())
         analysis_default = RECOMMENDED_API_MODELS["analysis"][analysis_provider]
         self.analysis_model.addItem(analysis_default)
-        analysis_key = (os.getenv("DEEPSEEK_API_KEY", "") if analysis_provider == "deepseek"
-                        else os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", ""))
+        analysis_env_key = {"deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY"}.get(analysis_provider)
+        analysis_key = (os.getenv(analysis_env_key, "") if analysis_env_key else
+                        os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", ""))
         self.analysis_api_key = QLineEdit(analysis_key)
         self.analysis_key_toggle, self.analysis_validate, self.analysis_api_status = self._add_api_fields(
             analysis,
@@ -2172,6 +2176,7 @@ class SentryWindow(QMainWindow):
     def _select_provider(combo: QComboBox, requested: str) -> None:
         normalized = requested.strip().casefold()
         aliases = {"google gemini": "gemini", "deepgram": "deepgram", "deepseek": "deepseek",
+                   "groq": "groq",
                    "openai": "openai"}
         index = combo.findData(aliases.get(normalized, normalized))
         combo.setCurrentIndex(max(0, index))
@@ -2408,6 +2413,7 @@ class SentryWindow(QMainWindow):
         endpoint = {
             "gemini": "https://generativelanguage.googleapis.com/v1beta/models",
             "deepseek": "https://api.deepseek.com/models",
+            "groq": "https://api.groq.com/openai/v1/models",
         }[provider_id]
         self._send_api_request(service, provider_id, key, endpoint, "models")
 
@@ -2529,6 +2535,7 @@ class SentryWindow(QMainWindow):
             ("gemini", "analysis"): ("flash",),
             ("openai", "analysis"): ("gpt-4o-mini", "mini"),
             ("deepseek", "analysis"): ("deepseek-flash",),
+            ("groq", "analysis"): ("openai/gpt-oss-120b",),
         }[(provider, service)]
         return next((name for hint in hints for name in models if hint in name), models[0])
 

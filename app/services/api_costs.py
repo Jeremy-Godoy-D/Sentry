@@ -6,14 +6,16 @@ from datetime import date, datetime, timedelta, timezone
 
 RECOMMENDED_API_MODELS = {
     "transcription": {"deepgram": "nova-3"},
-    "analysis": {"gemini": "gemini-3.5-flash", "deepseek": "deepseek-flash"},
+    "analysis": {"gemini": "gemini-3.5-flash", "deepseek": "deepseek-flash",
+                 "groq": "openai/gpt-oss-120b"},
 }
 
 
 # USD, modalidad estándar de pago por uso. Las tarifas se aplican automáticamente
 # a solicitudes nuevas y las tarifas de cada solicitud quedan guardadas en la base.
 # Fuentes: deepgram.com/pricing, ai.google.dev/gemini-api/docs/pricing,
-# api-docs.deepseek.com/quick_start/pricing y developers.openai.com/api/docs/pricing (23-09-2026).
+# api-docs.deepseek.com/quick_start/pricing, console.groq.com/docs/models
+# y developers.openai.com/api/docs/pricing (23-09-2026).
 # La tarifa por minuto de transcribe-diarize aproxima el costo de gpt-4o-transcribe;
 # el modelo de diarización publica precios por tokens y el formato diarized_json
 # puede no devolver los contadores necesarios para calcularlos con exactitud.
@@ -24,6 +26,7 @@ DEFAULT_PRICES = {
     ("transcription", "openai", "gpt-4o-mini-transcribe"): ("minute", 0.003, 0.0, 0.0),
     ("analysis", "gemini", "gemini-3.5-flash"): ("million_tokens", 1.50, 9.0, 0.15),
     ("analysis", "deepseek", "deepseek-flash"): ("million_tokens", 0.30, 1.20, 0.006),
+    ("analysis", "groq", "openai/gpt-oss-120b"): ("million_tokens", 0.15, 0.60, 0.075),
     ("analysis", "openai", "gpt-4o-mini"): ("million_tokens", 0.15, 0.60, 0.075),
 }
 DEEPGRAM_KEYTERM_RATE = 0.0013  # USD/min, audio pregrabado con Keyterm Prompting.

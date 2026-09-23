@@ -16,9 +16,11 @@ SOURCES = {
     'deepgram': 'https://deepgram.com/pricing',
     'gemini': 'https://ai.google.dev/gemini-api/docs/pricing',
     'deepseek': 'https://api-docs.deepseek.com/quick_start/pricing/',
+    'groq': 'https://console.groq.com/docs/models',
 }
 SERVICE_NAMES = {'transcription': 'Transcripción', 'analysis': 'Análisis'}
 PROVIDER_NAMES = {'deepgram': 'Deepgram', 'gemini': 'Gemini', 'deepseek': 'DeepSeek',
+                  'groq': 'Groq',
                   'openai': 'OpenAI'}
 
 
@@ -38,6 +40,8 @@ def _tariff_name(event: dict) -> str:
         return 'Pico' if abs((event['input_rate'] or 0) - peak) < 1e-8 else 'Fuera de pico'
     if key == ('analysis', 'gemini', 'gemini-3.5-flash'):
         return 'Estándar'
+    if key == ('analysis', 'groq', 'openai/gpt-oss-120b'):
+        return 'Referencia de pago'
     return 'Histórica'
 
 
@@ -206,6 +210,8 @@ def export_api_costs_excel(database, output: Path, start: date, end: date,
                 ('deepseek', 'DeepSeek V4.1 Flash', 'Pico UTC, lunes a viernes 01–04 y 06–10',
                  'USD/1M tokens', .30, .006, 1.20),
                 ('deepseek', 'DeepSeek V4.1 Flash', 'Fuera de pico', 'USD/1M tokens', .15, .003, .60),
+                ('groq', 'GPT-OSS 120B', 'Referencia de pago; plan gratis sujeto a límites',
+                 'USD/1M tokens', .15, .075, .60),
             )
             for row, (source, model, condition, unit, input_rate, cached_rate, output_rate) in enumerate(references, 4):
                 for column, value in enumerate((PROVIDER_NAMES[source], model, condition, unit)):
