@@ -97,6 +97,25 @@ CREATE TABLE IF NOT EXISTS analysis_timings (
     analysis_cached INTEGER NOT NULL CHECK(analysis_cached IN (0,1)),
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS api_prices (
+    service TEXT NOT NULL CHECK(service IN ('transcription','analysis')),
+    provider TEXT NOT NULL, model TEXT NOT NULL,
+    unit TEXT NOT NULL CHECK(unit IN ('minute','million_tokens')),
+    input_rate REAL NOT NULL CHECK(input_rate >= 0),
+    output_rate REAL NOT NULL CHECK(output_rate >= 0),
+    cached_input_rate REAL NOT NULL DEFAULT 0 CHECK(cached_input_rate >= 0),
+    PRIMARY KEY(service, provider, model)
+);
+CREATE TABLE IF NOT EXISTS api_usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_id INTEGER REFERENCES calls(id) ON DELETE SET NULL,
+    service TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+    request_id TEXT, audio_seconds REAL, input_tokens INTEGER, output_tokens INTEGER,
+    cached_input_tokens INTEGER NOT NULL DEFAULT 0,
+    price_unit TEXT, input_rate REAL, output_rate REAL, cached_input_rate REAL, cost_usd REAL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_api_usage_created ON api_usage(created_at);
 CREATE TABLE IF NOT EXISTS file_fingerprints (
     file_path TEXT PRIMARY KEY,
     file_size INTEGER NOT NULL,
@@ -140,18 +159,26 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             version = connection.execute("PRAGMA user_version").fetchone()[0]
-            if version > 6:
+            if version > 8:
                 raise RuntimeError("La base de datos pertenece a una versión más nueva de Sentry.")
-            if version < 6 and connection.execute(
+            if version < 8 and connection.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' LIMIT 1"
             ).fetchone():
                 stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
-                self.backup_to(self.path.parent / "backups" / f"before-schema-{version}-to-6-{stamp}.db")
+                self.backup_to(self.path.parent / "backups" / f"before-schema-{version}-to-8-{stamp}.db")
             connection.execute("PRAGMA journal_mode=WAL")
             connection.execute("PRAGMA synchronous=NORMAL")
             # Incluye DDL y versión en la misma transacción: una migración fallida
             # no deja la base marcada como actualizada ni parcialmente alterada.
             connection.executescript("BEGIN IMMEDIATE;\n" + SCHEMA)
+            price_columns = {row[1] for row in connection.execute("PRAGMA table_info(api_prices)")}
+            if "cached_input_rate" not in price_columns:
+                connection.execute("ALTER TABLE api_prices ADD COLUMN cached_input_rate REAL NOT NULL DEFAULT 0")
+            usage_columns = {row[1] for row in connection.execute("PRAGMA table_info(api_usage)")}
+            if "cached_input_tokens" not in usage_columns:
+                connection.execute("ALTER TABLE api_usage ADD COLUMN cached_input_tokens INTEGER NOT NULL DEFAULT 0")
+            if "cached_input_rate" not in usage_columns:
+                connection.execute("ALTER TABLE api_usage ADD COLUMN cached_input_rate REAL")
             columns = {row[1] for row in connection.execute("PRAGMA table_info(calls)")}
             additions = {
                 "category": "TEXT NOT NULL DEFAULT 'PENDIENTE'",
@@ -168,7 +195,7 @@ class Database:
             connection.execute("UPDATE calls SET status='ERROR', analysis_error="
                                "'El análisis fue interrumpido al cerrar la aplicación.' "
                                "WHERE status IN ('TRANSFIRIENDO','ANALIZANDO')")
-            connection.execute("PRAGMA user_version=6")
+            connection.execute("PRAGMA user_version=8")
 
     @contextmanager
     def connect(self):
@@ -399,6 +426,56 @@ class Database:
                  float(metrics["contextual_ms"]), float(metrics["persistence_ms"]),
                  float(metrics["total_ms"]), int(bool(metrics["transcription_cached"])),
                  int(bool(metrics["analysis_cached"]))),
+            )
+
+    def api_prices(self):
+        from app.services.api_costs import DEFAULT_PRICES
+        prices = dict(DEFAULT_PRICES)
+        with self.connect() as connection:
+            for row in connection.execute(
+                "SELECT service,provider,model,unit,input_rate,output_rate,cached_input_rate FROM api_prices"
+            ):
+                prices[(row['service'], row['provider'], row['model'])] = (
+                    row['unit'], row['input_rate'], row['output_rate'], row['cached_input_rate'])
+        return prices
+
+    def save_api_price(self, service: str, provider: str, model: str, unit: str,
+                       input_rate: float, output_rate: float, cached_input_rate: float = 0.0):
+        if service not in {'transcription', 'analysis'} or unit not in {'minute', 'million_tokens'}:
+            raise ValueError('Servicio o unidad de precio no válida.')
+        if not provider.strip() or not model.strip() or min(input_rate, output_rate, cached_input_rate) < 0:
+            raise ValueError('La tarifa necesita proveedor, modelo y valores no negativos.')
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO api_prices(service,provider,model,unit,input_rate,output_rate,cached_input_rate) "
+                "VALUES (?,?,?,?,?,?,?) ON CONFLICT(service,provider,model) DO UPDATE SET "
+                "unit=excluded.unit,input_rate=excluded.input_rate,output_rate=excluded.output_rate,"
+                "cached_input_rate=excluded.cached_input_rate",
+                (service, provider.strip(), model.strip(), unit, input_rate, output_rate, cached_input_rate),
+            )
+
+    def record_api_usage(self, file_path, service: str, provider: str, model: str,
+                         payload: dict, fallback_seconds: float | None, *, keyterm: bool = False):
+        """Registra una respuesta real una vez, independientemente de la caché de llamadas."""
+        from app.services.api_costs import estimated_cost, price_for_request, usage_from_response
+        seconds, input_tokens, output_tokens, cached_input_tokens = usage_from_response(
+            service, provider, payload, fallback_seconds)
+        price = price_for_request(service, provider, model, payload, keyterm=keyterm)
+        unit, input_rate, output_rate, cached_input_rate = price if price else (None, None, None, 0.0)
+        cost = estimated_cost(unit, input_rate, output_rate, seconds, input_tokens,
+                              output_tokens, cached_input_rate, cached_input_tokens) if price else None
+        metadata = payload.get('metadata') or {}
+        request_id = metadata.get('request_id') or payload.get('id') or payload.get('responseId')
+        with self.connect() as connection:
+            row = connection.execute("SELECT id FROM calls WHERE file_path=?",
+                                     (str(Path(file_path).resolve()),)).fetchone()
+            connection.execute(
+                "INSERT INTO api_usage(call_id,service,provider,model,request_id,audio_seconds,"
+                "input_tokens,output_tokens,cached_input_tokens,price_unit,input_rate,output_rate,"
+                "cached_input_rate,cost_usd) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (row[0] if row else None, service, provider, model, str(request_id) if request_id else None,
+                 seconds, input_tokens, output_tokens, cached_input_tokens or 0, unit, input_rate,
+                 output_rate, cached_input_rate, cost),
             )
 
     def set_reviewed(self, file_path, reviewed=True):

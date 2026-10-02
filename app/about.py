@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 APP_NAME = "Sentry"
-APP_VERSION = "0.1.0-beta.9"
+APP_VERSION = "1.0.1"
 UPDATE_REPOSITORY = "Jeremy-Godoy-D/Sentry"
 APP_AUTHORS = "Sentry Contributors"
 APP_DESCRIPTION = (
@@ -12,12 +12,9 @@ APP_DESCRIPTION = (
     "para facilitar la revisión y el seguimiento de cada caso."
 )
 APP_FEATURES = (
-    ("Verificación de cualquier llamada analizada", "Marca llamadas normales y buzones como denuncias verificadas. La decisión se conserva en los análisis y reportes; quitarla restaura la última clasificación automática."),
-    ("Reevaluación automática", "Al agregar o modificar términos sensibles, las llamadas ya analizadas se revisan sin volver a transcribir el mismo audio. Los buzones también pueden convertirse en denuncias cuando se confirma riesgo."),
-    ("Menús solo con clic", "La rueda del mouse no cambia proveedor, modelo ni otros selectores. Esos listados se abren únicamente al hacer clic."),
-    ("Notas automáticas", "Acerca de consulta en GitHub los cambios publicados para la versión instalada."),
-    ("Historial de versiones", "El selector de versión permite revisar las novedades de publicaciones anteriores."),
-    ("Licencia integrada", "La licencia MIT puede consultarse sin salir de la aplicación."),
+    ("Groq para análisis", "En Configuración, Otros proveedores permite seleccionar Groq GPT-OSS 120B para el análisis contextual de las llamadas."),
+    ("Modelo y clave", "El modelo queda fijado para evitar errores de compatibilidad; Sentry valida la clave de Groq y la guarda cifrada con Windows."),
+    ("Costes API", "La pantalla y el Excel incluyen las solicitudes de Groq con tarifas de referencia. En el plan gratuito puede no existir un cargo real."),
 )
 
 

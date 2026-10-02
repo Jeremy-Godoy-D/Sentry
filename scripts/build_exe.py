@@ -19,6 +19,7 @@ if str(ROOT) not in sys.path:
 from app.about import APP_VERSION
 
 INSTALLER_NAME = f"Sentry_Setup_{APP_VERSION}.exe"
+LATEST_INSTALLER_NAME = "Sentry_Setup.exe"
 
 
 def winscp_directory() -> Path:
@@ -108,6 +109,7 @@ def main() -> int:
         obsolete_file.unlink(missing_ok=True)
     (DIST / "Instalar_Sentry.exe").unlink(missing_ok=True)
     (DIST / INSTALLER_NAME).unlink(missing_ok=True)
+    (DIST / LATEST_INSTALLER_NAME).unlink(missing_ok=True)
 
     environment = os.environ.copy()
     environment["SENTRY_INITIAL_DB"] = str(initial_database)
@@ -137,12 +139,14 @@ def main() -> int:
     if not installer.is_file():
         raise RuntimeError(f"No se generó dist/{INSTALLER_NAME}.")
     manifest, checksum = write_update_metadata(installer, APP_VERSION)
+    latest_installer = DIST / LATEST_INSTALLER_NAME
+    shutil.copy2(installer, latest_installer)
     bundle = application.parent.resolve()
     if bundle.parent != DIST:
         raise RuntimeError("La carpeta intermedia no pertenece a dist.")
     shutil.rmtree(bundle)
     print(f"Instalador listo: {installer}")
-    print(f"Publicar junto al instalador: {manifest} y {checksum}")
+    print(f"Publicar junto al instalador: {latest_installer}, {manifest} y {checksum}")
     return 0
 
 

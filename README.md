@@ -32,14 +32,14 @@ Sentry es una aplicación de escritorio para Windows que centraliza la auditorí
 
 La aplicación está diseñada para uso interno en entornos corporativos. Puede procesar información sensible, por lo que las credenciales, bases, grabaciones y reportes deben mantenerse en equipos y carpetas con acceso restringido.
 
-> **Versión actual:** `0.1.0-beta.9` · La versión beta debe validarse en un entorno controlado antes de utilizarse en producción.
+> **Versión actual:** `1.0.1`
 
 ## Funcionalidades
 
 - Búsqueda en carpetas locales, NAS e Issabel mediante SFTP.
 - Asociación de llamadas con clientes por teléfono y fecha.
-- Transcripción con Deepgram u OpenAI.
-- Análisis contextual con Google Gemini u OpenAI.
+- Transcripción con Deepgram Nova-3.
+- Análisis contextual con Gemini 3.5 Flash, DeepSeek V4.1 Flash o Groq GPT-OSS 120B.
 - Clasificación en alertas, buzones y llamadas normales.
 - Detección y etiquetado de palabras o frases sensibles.
 - Reproducción de audio sincronizada con la transcripción.
@@ -96,11 +96,12 @@ Desde **Configuración** se seleccionan de forma independiente el proveedor y el
 
 | Servicio | Variables de entorno admitidas |
 | --- | --- |
-| Deepgram | `DEEPGRAM_API_KEY` |
-| Google Gemini | `GEMINI_API_KEY`, `GOOGLE_API_KEY` |
-| OpenAI | `OPENAI_API_KEY` |
+| Deepgram Nova-3 | `DEEPGRAM_API_KEY` |
+| Google Gemini 3.5 Flash | `GEMINI_API_KEY`, `GOOGLE_API_KEY` |
+| DeepSeek V4.1 Flash | `DEEPSEEK_API_KEY` |
+| Groq GPT-OSS 120B | `GROQ_API_KEY` |
 
-También puedes definir `SENTRY_TRANSCRIPTION_PROVIDER`, `SENTRY_TRANSCRIPTION_MODEL`, `SENTRY_ANALYSIS_PROVIDER` y `SENTRY_ANALYSIS_MODEL`.
+Los modelos se fijan a las opciones admitidas para evitar fallos de compatibilidad. Deepgram Nova-3 es el único modelo de transcripción. Para análisis se puede elegir Gemini 3.5 Flash, DeepSeek V4.1 Flash (`deepseek-flash`) o **Otros proveedores → Groq** (`openai/gpt-oss-120b`). Groq y DeepSeek se usan aquí solo para análisis. La cuenta gratuita de Groq tiene límites de solicitudes y tokens; ante un lote grande, ajusta la concurrencia en Configuración.
 
 Las claves guardadas desde la interfaz se protegen mediante DPAPI y solo pueden recuperarse con el mismo usuario de Windows.
 
@@ -137,9 +138,13 @@ Consulta las reglas específicas en [scripts/README.md](scripts/README.md).
 
 ## Análisis y consumo de API
 
+La pantalla **Costes API** registra cada solicitud de transcripción y análisis realizada desde esta versión. Permite filtrar por día, semana, mes o **Todo el historial**, así como por servicio y proveedor; muestra el gasto estimado en USD por día y por modelo, además del detalle de solicitudes. El botón verde **Exportar Excel**, junto a **Actualizar**, genera un libro con resumen, gastos diarios, todas las solicitudes del filtro y tarifas de referencia y aplicadas. El total suma todos los importes estimables del período seleccionado. Las respuestas reutilizadas desde caché no vuelven a sumarse. El historial anterior a esta versión no contiene datos de consumo y no se reconstruye a partir de las llamadas.
+
+Sentry calcula los importes automáticamente a partir de la duración de audio o los tokens devueltos por la API. Usa referencias de pago por uso consultadas el 23 de septiembre de 2026 en [Deepgram](https://deepgram.com/pricing), [Gemini](https://ai.google.dev/gemini-api/docs/pricing), [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing/) y [Groq](https://console.groq.com/docs/models). Para Deepgram suma Keyterm Prompting cuando envía términos sensibles; para DeepSeek aplica la franja pico o fuera de pico según la hora UTC de la solicitud. Cada solicitud conserva la tarifa usada para su estimación, incluidas las tarifas históricas guardadas antes de este cambio. Las tarifas personalizadas antiguas no se aplican a solicitudes nuevas. Cuando falta la tarifa o el dato de uso necesario, la solicitud aparece como **Sin estimación** y el total excluye ese importe. Los valores pueden diferir de la factura por planes, créditos, impuestos y cambios de tarifa; en el plan gratuito de Groq el cargo real puede ser cero aunque se muestre la tarifa de referencia.
+
 Sentry procesa varios audios en paralelo, reutiliza conexiones HTTP y agrupa archivos con la misma huella SHA-256. Las cachés separadas de transcripción y análisis evitan repetir solicitudes cuando coinciden el audio, el modelo y los términos configurados.
 
-Si no hay términos sensibles, la clasificación normal se realiza localmente y no consume la API contextual. Cuando existen candidatos, Gemini u OpenAI reciben únicamente fragmentos cercanos a las coincidencias.
+Si no hay términos sensibles, la clasificación normal se realiza localmente y no consume la API contextual. Cuando existen candidatos, Gemini o DeepSeek reciben únicamente fragmentos cercanos a las coincidencias.
 
 Al agregar o modificar términos en **Configuración**, las llamadas ya analizadas se vuelven a evaluar automáticamente al terminar la edición o tras una breve pausa. Si hay un análisis o una búsqueda en curso, la reevaluación espera y utiliza los últimos términos configurados. Se reutilizan las transcripciones si el audio, proveedor y modelo no cambian; la nueva validación contextual puede consumir API. Las llamadas pendientes de su primer análisis siguen iniciándose con **Analizar**.
 
@@ -193,13 +198,13 @@ Construye el instalador con:
 .\Construir_EXE.cmd
 ```
 
-El resultado se genera en `dist\Sentry_Setup_<versión>.exe`.
+El resultado se genera en `dist\Sentry_Setup_<versión>.exe`. La compilación crea también `dist\Sentry_Setup.exe`, una copia para el botón de descarga del README.
 
 Para publicar una versión:
 
 1. Actualiza `APP_VERSION` en `app/about.py` y ejecuta las pruebas.
 2. Crea un Release con la etiqueta `v<versión>` apuntando al commit correspondiente de `main`.
-3. Adjunta el instalador, `sentry-update.json` y `SHA256SUMS`.
+3. Adjunta `Sentry_Setup_<versión>.exe`, `Sentry_Setup.exe`, `sentry-update.json` y `SHA256SUMS`. El archivo de nombre fijo permite descargar directamente el instalador del último Release; el actualizador utiliza el archivo con versión.
 4. Valida la actualización en una instalación limpia antes de distribuirla.
 
 La verificación SHA-256 comprueba integridad, pero no sustituye una firma digital de código.

@@ -95,7 +95,7 @@ class ManualVerificationTests(unittest.TestCase):
         self.assertEqual(reopened.call_rows([path])[0]["category"], "ALERTA")
         self.assertEqual(reopened.call_rows([path])[0]["automatic_category"], "BUZON")
         with reopened.connect() as connection:
-            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 6)
+            self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 8)
             self.assertEqual([tuple(row) for row in connection.execute("SELECT sql FROM sqlite_master ORDER BY name")],
                              original_schema)
         reopened.set_reviewed(path, False)

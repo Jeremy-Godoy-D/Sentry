@@ -16,6 +16,7 @@ from app.about import APP_NAME, APP_VERSION, APP_AUTHORS, APP_DESCRIPTION, APP_F
 from app.secret_store import SecretStoreError, protect, unprotect
 from app.services.audio_analysis import assign_roles, keyword_signature
 from app.services.analysis_batch import analysis_concurrency, run_analysis_batch
+from app.services.api_costs import RECOMMENDED_API_MODELS
 from app.ui.update_controller import UpdatePanel
 from app.services.base_conversion import (
     LUCID_AUDIO_SINCE, BaseAudioIndex, load_hoja1_audio_index, normalize_phone_number,
@@ -29,7 +30,7 @@ from app.services.app_updates import (
     parse_release_history,
 )
 from app.services.winscp_client import (
-    match_and_download_remote_audio, scan_host_fingerprint, search_remote_audio,
+    match_and_download_remote_audio, scan_host_fingerprint,
     test_connection,
 )
 from app.ui.theme import (
@@ -38,6 +39,7 @@ from app.ui.theme import (
 )
 from app.ui.views.bases_page import BasesPage
 from app.ui.views.reports_page import ReportsPage
+from app.ui.views.api_costs_page import ApiCostsPage
 
 from PySide6.QtCore import (
     QByteArray, QEasingCurve, QPoint, QRectF, QSize, Qt, QThread, QTimer, QUrl,
@@ -73,7 +75,6 @@ from PySide6.QtWidgets import (
 )
 
 PALETTE = dict(theme_colors(DEFAULT_THEME))
-
 AUDIO_SUFFIXES = {".mp3", ".wav"}
 _CATEGORY_PIXMAPS: dict[str, QPixmap] = {}
 
@@ -520,24 +521,6 @@ class WinSCPWorker(QThread):
             self.succeeded.emit(self.mode, result)
 
 
-class RemoteSearchWorker(QThread):
-    succeeded = Signal(object)
-    failed = Signal(str)
-
-    def __init__(self, config: dict, query: str, parent=None):
-        super().__init__(parent)
-        self.config = dict(config)
-        self.query = query
-
-    def run(self):
-        try:
-            result = search_remote_audio(self.config, self.query)
-        except Exception as exc:
-            self.failed.emit(str(exc))
-        else:
-            self.succeeded.emit(result)
-
-
 class IssabelMatchWorker(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
@@ -934,7 +917,6 @@ class SentryWindow(QMainWindow):
         self.local_scan_worker: LocalScanWorker | None = None
         self.pending_base_scan = False
         self.winscp_worker: WinSCPWorker | None = None
-        self.remote_search_worker: RemoteSearchWorker | None = None
         self.issabel_match_worker: IssabelMatchWorker | None = None
         self.report_export_worker: ReportExportWorker | None = None
         self.close_after_analysis = False
@@ -1011,6 +993,8 @@ class SentryWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.pages.addWidget(self._build_audit_page())
         self.pages.addWidget(self._build_reports_page())
+        self.costs_page = ApiCostsPage(self.database, self)
+        self.pages.addWidget(self.costs_page)
         self.pages.addWidget(self._build_config_page())
         self.bases_page = BasesPage(self.database)
         self.active_base_path = self.bases_page.active_base_path
@@ -1100,6 +1084,7 @@ class SentryWindow(QMainWindow):
         for index, (key, text, icon) in enumerate((
             ("audit", "Auditoría", None),
             ("reports", "Reportes", None),
+            ("costs", "Costes API", None),
             ("config", "Configuración", settings_icon),
         )):
             button = QPushButton("" if icon else text)
@@ -1735,8 +1720,8 @@ class SentryWindow(QMainWindow):
         remote_title = QLabel("Servidor de grabaciones (WinSCP / SFTP)")
         remote_title.setObjectName("formTitle")
         remote_help = QLabel(
-            "Usa los mismos tres datos con los que inicias sesión en WinSCP. Sentry utilizará "
-            "el puerto estándar 22, abrirá la carpeta inicial y validará la huella SSH automáticamente."
+            "Configura el servidor, puerto, usuario, contraseña y carpeta inicial de las grabaciones. "
+            "Al conectar, Sentry comprueba y guarda la huella SSH automáticamente."
         )
         remote_help.setObjectName("pageSubtitle")
         remote_help.setWordWrap(True)
@@ -1766,17 +1751,25 @@ class SentryWindow(QMainWindow):
         self.remote_fingerprint.setAccessibleName("Huella SSH del servidor")
 
         for column, (label_text, field) in enumerate(
-            (("IP DEL SERVIDOR", self.remote_host), ("USUARIO", self.remote_username))
+            (("IP DEL SERVIDOR", self.remote_host), ("PUERTO SFTP", self.remote_port))
         ):
             label = QLabel(label_text)
             label.setObjectName("fieldLabel")
             label.setBuddy(field)
             remote_fields.addWidget(label, 0, column)
             remote_fields.addWidget(field, 1, column)
+        for column, (label_text, field) in enumerate(
+            (("USUARIO", self.remote_username), ("CARPETA REMOTA", self.remote_path))
+        ):
+            label = QLabel(label_text)
+            label.setObjectName("fieldLabel")
+            label.setBuddy(field)
+            remote_fields.addWidget(label, 2, column)
+            remote_fields.addWidget(field, 3, column)
         password_label = QLabel("CONTRASEÑA")
         password_label.setObjectName("fieldLabel")
         password_label.setBuddy(self.remote_password)
-        remote_fields.addWidget(password_label, 2, 0, 1, 2)
+        remote_fields.addWidget(password_label, 4, 0, 1, 2)
         password_row = QHBoxLayout()
         password_row.setSpacing(7)
         password_row.addWidget(self.remote_password, 1)
@@ -1789,7 +1782,7 @@ class SentryWindow(QMainWindow):
             )
         )
         password_row.addWidget(self.remote_password_toggle)
-        remote_fields.addLayout(password_row, 3, 0, 1, 2)
+        remote_fields.addLayout(password_row, 5, 0, 1, 2)
 
         connect_row = QHBoxLayout()
         connect_row.addStretch()
@@ -1797,7 +1790,7 @@ class SentryWindow(QMainWindow):
         self.remote_test_button.setObjectName("validateButton")
         self.remote_test_button.clicked.connect(lambda: self._start_winscp_action("connect"))
         connect_row.addWidget(self.remote_test_button)
-        remote_fields.addLayout(connect_row, 4, 0, 1, 2)
+        remote_fields.addLayout(connect_row, 6, 0, 1, 2)
         remote_fields.setColumnStretch(0, 1)
         remote_fields.setColumnStretch(1, 1)
         remote_layout.addLayout(remote_fields)
@@ -1807,40 +1800,9 @@ class SentryWindow(QMainWindow):
         self.remote_status.setWordWrap(True)
         remote_layout.addWidget(self.remote_status)
 
-        remote_search_label = QLabel("BUSCAR AUDIOS EN ISSABEL")
-        remote_search_label.setObjectName("fieldLabel")
-        self.remote_search_input = QLineEdit()
-        self.remote_search_input.setPlaceholderText("Número de teléfono o parte del nombre del archivo")
-        self.remote_search_input.setAccessibleName("Buscar audios en Issabel")
-        remote_search_label.setBuddy(self.remote_search_input)
-        remote_search_row = QHBoxLayout()
-        remote_search_row.setSpacing(7)
-        remote_search_row.addWidget(self.remote_search_input, 1)
-        self.remote_search_button = QPushButton("Buscar")
-        self.remote_search_button.setObjectName("secondaryButton")
-        self.remote_search_button.setEnabled(False)
-        self.remote_search_button.clicked.connect(self._start_remote_search)
-        self.remote_search_input.returnPressed.connect(self._start_remote_search)
-        remote_search_row.addWidget(self.remote_search_button)
-        remote_layout.addWidget(remote_search_label)
-        remote_layout.addLayout(remote_search_row)
-        self.remote_results = QListWidget()
-        self.remote_results.setObjectName("remoteResults")
-        self.remote_results.setAccessibleName("Archivos encontrados en Issabel")
-        self.remote_results.setMinimumHeight(105)
-        self.remote_results.setMaximumHeight(190)
-        self.remote_results.setAlternatingRowColors(True)
-        self.remote_results.itemClicked.connect(
-            lambda item: self._show_toast(f"Ubicación: {item.data(Qt.ItemDataRole.UserRole)}")
-        )
-        remote_layout.addWidget(self.remote_results)
-        self.remote_search_status = QLabel("Conecta el servidor para buscar dentro de sus carpetas.")
-        self.remote_search_status.setObjectName("apiStatus")
-        self.remote_search_status.setProperty("state", "idle")
-        self.remote_search_status.setWordWrap(True)
-        remote_layout.addWidget(self.remote_search_status)
         for field in (
-            self.remote_host, self.remote_username, self.remote_password,
+            self.remote_host, self.remote_port, self.remote_username, self.remote_password,
+            self.remote_path,
         ):
             field.textChanged.connect(self._mark_remote_dirty)
         outer.addWidget(remote)
@@ -1893,15 +1855,11 @@ class SentryWindow(QMainWindow):
         transcription.addWidget(transcription_title)
         self.transcription_provider = QComboBox()
         self.transcription_provider.addItem("Deepgram", "deepgram")
-        self.transcription_provider.addItem("OpenAI", "openai")
-        self._select_provider(self.transcription_provider, os.getenv("SENTRY_TRANSCRIPTION_PROVIDER", "deepgram"))
+        self.transcription_provider.setEnabled(False)
         self.transcription_model = QComboBox()
-        self.transcription_model.setEditable(True)
-        transcription_default = ("gpt-4o-transcribe-diarize"
-                                 if self.transcription_provider.currentData() == "openai" else "nova-3")
-        self.transcription_model.addItem(os.getenv("SENTRY_TRANSCRIPTION_MODEL", transcription_default))
-        transcription_key = "OPENAI_API_KEY" if self.transcription_provider.currentData() == "openai" else "DEEPGRAM_API_KEY"
-        self.transcription_api_key = QLineEdit(os.getenv(transcription_key, ""))
+        self.transcription_model.setEditable(False)
+        self.transcription_model.addItem(RECOMMENDED_API_MODELS["transcription"]["deepgram"])
+        self.transcription_api_key = QLineEdit(os.getenv("DEEPGRAM_API_KEY", ""))
         self.transcription_key_toggle, self.transcription_validate, self.transcription_api_status = self._add_api_fields(
             transcription,
             self.transcription_provider,
@@ -1921,17 +1879,19 @@ class SentryWindow(QMainWindow):
         analysis.addWidget(analysis_title)
         self.analysis_provider = QComboBox()
         self.analysis_provider.addItem("Google Gemini", "gemini")
-        self.analysis_provider.addItem("OpenAI", "openai")
+        self.analysis_provider.addItem("DeepSeek", "deepseek")
+        self.analysis_provider.addItem("Otros proveedores")
+        self.analysis_provider.model().item(self.analysis_provider.count() - 1).setEnabled(False)
+        self.analysis_provider.addItem("Groq · GPT-OSS 120B", "groq")
         self._select_provider(self.analysis_provider, os.getenv("SENTRY_ANALYSIS_PROVIDER", "gemini"))
         self.analysis_model = QComboBox()
-        self.analysis_model.setEditable(True)
-        analysis_default = "gpt-4o-mini" if self.analysis_provider.currentData() == "openai" else "gemini-3.5-flash-lite"
-        self.analysis_model.addItem(os.getenv("SENTRY_ANALYSIS_MODEL", analysis_default))
-        analysis_key = (
-            os.getenv("OPENAI_API_KEY", "")
-            if self.analysis_provider.currentData() == "openai"
-            else os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", "")
-        )
+        self.analysis_model.setEditable(False)
+        analysis_provider = str(self.analysis_provider.currentData())
+        analysis_default = RECOMMENDED_API_MODELS["analysis"][analysis_provider]
+        self.analysis_model.addItem(analysis_default)
+        analysis_env_key = {"deepseek": "DEEPSEEK_API_KEY", "groq": "GROQ_API_KEY"}.get(analysis_provider)
+        analysis_key = (os.getenv(analysis_env_key, "") if analysis_env_key else
+                        os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY", ""))
         self.analysis_api_key = QLineEdit(analysis_key)
         self.analysis_key_toggle, self.analysis_validate, self.analysis_api_status = self._add_api_fields(
             analysis,
@@ -2215,7 +2175,9 @@ class SentryWindow(QMainWindow):
     @staticmethod
     def _select_provider(combo: QComboBox, requested: str) -> None:
         normalized = requested.strip().casefold()
-        aliases = {"google gemini": "gemini", "deepgram": "deepgram", "openai": "openai"}
+        aliases = {"google gemini": "gemini", "deepgram": "deepgram", "deepseek": "deepseek",
+                   "groq": "groq",
+                   "openai": "openai"}
         index = combo.findData(aliases.get(normalized, normalized))
         combo.setCurrentIndex(max(0, index))
 
@@ -2238,14 +2200,9 @@ class SentryWindow(QMainWindow):
 
     def _reset_api_service(self, service: str) -> None:
         provider, model, key, button, status = self._api_controls(service)
-        defaults = {
-            ("transcription", "deepgram"): "nova-3",
-            ("transcription", "openai"): "gpt-4o-transcribe-diarize",
-            ("analysis", "gemini"): "gemini-3.5-flash-lite",
-            ("analysis", "openai"): "gpt-4o-mini",
-        }
+        recommended = RECOMMENDED_API_MODELS[service][str(provider.currentData())]
         model.clear()
-        model.addItem(defaults[(service, str(provider.currentData()))])
+        model.addItem(recommended)
         key.clear()
         toggle = self.transcription_key_toggle if service == "transcription" else self.analysis_key_toggle
         toggle.setChecked(False)
@@ -2262,13 +2219,31 @@ class SentryWindow(QMainWindow):
                 if not item:
                     continue
                 provider, model, field, _button, status = self._api_controls(service)
+                allowed_models = RECOMMENDED_API_MODELS[service]
+                saved_provider = item["provider"]
+                if saved_provider not in allowed_models:
+                    provider.blockSignals(True)
+                    provider.setCurrentIndex(0)
+                    provider.blockSignals(False)
+                    model.clear()
+                    model.addItem(allowed_models[str(provider.currentData())])
+                    self._set_api_status(
+                        status,
+                        "La clave guardada pertenece a un proveedor que ya no está habilitado. "
+                        "Introduce la clave del proveedor recomendado.",
+                        "error",
+                    )
+                    continue
                 provider.blockSignals(True)
-                self._select_provider(provider, item["provider"])
+                provider.setCurrentIndex(provider.findData(saved_provider))
                 provider.blockSignals(False)
                 model.clear()
-                model.addItem(item["model"])
+                model.addItem(allowed_models[saved_provider])
                 field.setText(unprotect(item["encrypted_key"]))
-                self._set_api_status(status, "Clave recuperada de forma segura · pendiente de validar", "idle")
+                notice = ("Clave recuperada · se seleccionó el modelo recomendado. Valida la clave."
+                          if item["model"] != allowed_models[saved_provider]
+                          else "Clave recuperada de forma segura · pendiente de validar")
+                self._set_api_status(status, notice, "idle")
         except (SecretStoreError, sqlite3.Error, OSError) as exc:
             self._show_toast(f"No se pudieron recuperar las claves: {exc}")
 
@@ -2315,12 +2290,6 @@ class SentryWindow(QMainWindow):
                 "Configuración cifrada recuperada · prueba la conexión antes de buscar grabaciones.",
                 "idle",
             )
-            self.remote_search_button.setEnabled(True)
-            self._set_api_status(
-                self.remote_search_status,
-                f"Servidor listo en {saved['remote_path']} · con una base activa se consultan solo sus fechas",
-                "idle",
-            )
         except (SecretStoreError, sqlite3.Error, OSError, KeyError) as exc:
             self._set_api_status(self.remote_status, f"No se pudo recuperar la conexión: {exc}", "error")
 
@@ -2359,7 +2328,7 @@ class SentryWindow(QMainWindow):
 
     def _set_winscp_busy(self, busy: bool) -> None:
         for control in (
-            self.remote_host, self.remote_username, self.remote_password,
+            self.remote_host, self.remote_port, self.remote_username, self.remote_path, self.remote_password,
             self.remote_password_toggle, self.remote_test_button,
         ):
             control.setEnabled(not busy)
@@ -2401,12 +2370,6 @@ class SentryWindow(QMainWindow):
             f"Conexión correcta · credenciales cifradas · huella {self.remote_fingerprint.text()}",
             "valid",
         )
-        self.remote_search_button.setEnabled(True)
-        self._set_api_status(
-            self.remote_search_status,
-            f"Servidor listo en {self.remote_path.text()} · con una base activa se consultan solo sus fechas",
-            "valid",
-        )
         self._show_toast("Servidor WinSCP conectado y guardado de forma segura")
 
     def _winscp_failed(self, error: str) -> None:
@@ -2417,78 +2380,6 @@ class SentryWindow(QMainWindow):
         worker = self.winscp_worker
         self.winscp_worker = None
         self._set_winscp_busy(False)
-        if worker is not None:
-            worker.deleteLater()
-
-    def _start_remote_search(self) -> None:
-        if self.remote_search_worker is not None:
-            return
-        query = self.remote_search_input.text().strip()
-        if len(query) < 3:
-            self._set_api_status(
-                self.remote_search_status,
-                "Escribe al menos 3 caracteres del teléfono o del nombre del archivo.",
-                "error",
-            )
-            self.remote_search_input.setFocus()
-            return
-        config = self._remote_config()
-        try:
-            if not config["fingerprint"]:
-                raise ValueError("Conecta primero el servidor de Issabel.")
-        except ValueError as exc:
-            self._set_api_status(self.remote_search_status, str(exc), "error")
-            return
-        directories = issabel_directories(config["remote_path"], self.active_base_index.dates)
-        if directories:
-            config["remote_paths"] = directories
-            config["recursive"] = False
-        self.remote_search_input.setEnabled(False)
-        self.remote_search_button.setEnabled(False)
-        self.remote_results.clear()
-        self._set_api_status(
-            self.remote_search_status,
-            (
-                f"Buscando “{query}” en {len(directories)} carpeta(s) correspondientes a las fechas de la base…"
-                if directories else f"Buscando “{query}” en todas las carpetas de Issabel…"
-            ),
-            "loading",
-        )
-        self.remote_search_worker = RemoteSearchWorker(config, query, self)
-        self.remote_search_worker.succeeded.connect(self._remote_search_succeeded)
-        self.remote_search_worker.failed.connect(self._remote_search_failed)
-        self.remote_search_worker.finished.connect(self._remote_search_finished)
-        self.remote_search_worker.start()
-
-    def _remote_search_succeeded(self, results: object) -> None:
-        files = results if isinstance(results, list) else []
-        for result in files:
-            if not isinstance(result, dict):
-                continue
-            path = str(result.get("path", ""))
-            size = int(result.get("size", 0) or 0)
-            modified = str(result.get("modified", ""))
-            item = QListWidgetItem(f"{Path(path).name}  ·  {size / 1024:.1f} KB  ·  {modified}")
-            item.setData(Qt.ItemDataRole.UserRole, path)
-            item.setToolTip(path)
-            self.remote_results.addItem(item)
-        count = self.remote_results.count()
-        message = (
-            f"{count} archivo{'s' if count != 1 else ''} encontrado{'s' if count != 1 else ''}. "
-            "Selecciona uno para ver su ubicación completa."
-            if count else "No se encontraron audios con ese número o nombre."
-        )
-        self._set_api_status(self.remote_search_status, message, "valid" if count else "idle")
-
-    def _remote_search_failed(self, error: str) -> None:
-        self._set_api_status(self.remote_search_status, f"No se pudo buscar: {error}", "error")
-        self._show_toast(f"Issabel: {error}")
-
-    def _remote_search_finished(self) -> None:
-        worker = self.remote_search_worker
-        self.remote_search_worker = None
-        self.remote_search_input.setEnabled(True)
-        self.remote_search_button.setEnabled(bool(self.remote_fingerprint.text().strip()))
         if worker is not None:
             worker.deleteLater()
 
@@ -2521,7 +2412,8 @@ class SentryWindow(QMainWindow):
             return
         endpoint = {
             "gemini": "https://generativelanguage.googleapis.com/v1beta/models",
-            "openai": "https://api.openai.com/v1/models",
+            "deepseek": "https://api.deepseek.com/models",
+            "groq": "https://api.groq.com/openai/v1/models",
         }[provider_id]
         self._send_api_request(service, provider_id, key, endpoint, "models")
 
@@ -2576,17 +2468,22 @@ class SentryWindow(QMainWindow):
             return
 
         models = self._extract_models(provider, service, payload)
-        current_model = model.currentText().strip()
-        if models:
-            model.clear()
-            model.addItems(models)
-            preferred = self._preferred_model(provider, service, current_model, models)
-            model.setCurrentText(preferred)
-            message = f"Clave válida · {len(models)} modelos disponibles"
-        else:
-            message = "Clave válida · escribe manualmente el modelo que deseas usar"
+        recommended = RECOMMENDED_API_MODELS.get(service, {}).get(provider)
+        model.blockSignals(True)
+        model.clear()
+        if recommended:
+            model.addItem(recommended)
+        model.blockSignals(False)
+        available = self._recommended_model_available(provider, service, recommended, models)
         self._set_api_busy(service, False)
+        if models and not available:
+            button.setText("Reintentar")
+            self._set_api_status(status, f"Clave válida, pero el modelo recomendado {recommended} "
+                                 "no aparece disponible para esta cuenta.", "error")
+            return
         button.setText("Validada")
+        message = (f"Clave válida · modelo fijado: {recommended}" if models else
+                   f"Clave válida · modelo fijado: {recommended}; el proveedor no devolvió catálogo")
         self._set_api_status(status, message, "valid")
         try:
             self._persist_credentials((service,))
@@ -2620,6 +2517,15 @@ class SentryWindow(QMainWindow):
         return list(dict.fromkeys(name for name in names if isinstance(name, str) and name))
 
     @staticmethod
+    def _recommended_model_available(provider: str, service: str, recommended: str | None,
+                                     models: list[str]) -> bool:
+        if not recommended:
+            return False
+        if provider == "deepgram" and service == "transcription":
+            return any(name == "nova-3" or name.startswith("nova-3-") for name in models)
+        return recommended in models
+
+    @staticmethod
     def _preferred_model(provider: str, service: str, current: str, models: list[str]) -> str:
         if current in models:
             return current
@@ -2628,6 +2534,8 @@ class SentryWindow(QMainWindow):
             ("openai", "transcription"): ("mini-transcribe", "transcribe", "whisper"),
             ("gemini", "analysis"): ("flash",),
             ("openai", "analysis"): ("gpt-4o-mini", "mini"),
+            ("deepseek", "analysis"): ("deepseek-flash",),
+            ("groq", "analysis"): ("openai/gpt-oss-120b",),
         }[(provider, service)]
         return next((name for hint in hints for name in models if hint in name), models[0])
 
@@ -2645,10 +2553,12 @@ class SentryWindow(QMainWindow):
         button.setAccessibleName(f"{'Ocultar' if visible else 'Mostrar'} {field.accessibleName().lower()}")
 
     def _switch_page(self, key: str) -> None:
-        page_index = {"audit": 0, "reports": 1, "config": 2, "bases": 3}[key]
+        page_index = {"audit": 0, "reports": 1, "costs": 2, "config": 3, "bases": 4}[key]
         self.pages.setCurrentIndex(page_index)
         if key == "reports":
             self.reports_page.refresh()
+        elif key == "costs":
+            self.costs_page.refresh()
         for name, button in self.nav_buttons.items():
             button.setChecked(name == key)
 
@@ -3078,8 +2988,8 @@ class SentryWindow(QMainWindow):
         source = self._source_key()
         if source == "issabel":
             self._switch_page("config")
-            self.remote_search_input.setFocus()
-            self._show_toast("Issabel usa la conexión SFTP configurada")
+            self.remote_host.setFocus()
+            self._show_toast("Configura la conexión SFTP de Issabel")
             return
         self._choose_source_directory(source)
 
@@ -3847,16 +3757,16 @@ class SentryWindow(QMainWindow):
             return
         if self.reports_page.worker is not None:
             self.reports_page.worker.wait()
+        if self.costs_page.worker is not None:
+            self.costs_page.worker.wait()
+        if self.costs_page.export_worker is not None:
+            self.costs_page.export_worker.wait()
         if self.local_scan_worker is not None:
             self._show_toast("Espera a que termine el escaneo local o del NAS antes de cerrar Sentry")
             event.ignore()
             return
         if self.winscp_worker is not None:
             self._show_toast("Espera a que termine la prueba de conexión antes de cerrar Sentry")
-            event.ignore()
-            return
-        if self.remote_search_worker is not None:
-            self._show_toast("Espera a que termine la búsqueda en Issabel antes de cerrar Sentry")
             event.ignore()
             return
         if self.issabel_match_worker is not None:
@@ -3935,6 +3845,10 @@ class SentryWindow(QMainWindow):
             QPushButton {{ min-height: 36px; padding: 0 13px; border-radius: 7px; font-weight: 500; }}
             QPushButton:focus, QLineEdit:focus, QComboBox:focus, QWidget:focus {{
                 border: 2px solid {PALETTE['green_deep']};
+            }}
+            QScrollArea#apiCostsPage:focus, QScrollArea#costChartScroll:focus, QScrollArea#reportsScroll:focus {{
+                border: none;
+                outline: none;
             }}
             QPushButton#navButton {{
                 background: transparent;

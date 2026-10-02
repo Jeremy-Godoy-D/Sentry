@@ -1,9 +1,9 @@
 #define MyAppName "Sentry"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.0-beta.9"
+  #define MyAppVersion "1.0.1"
 #endif
 #ifndef MyAppFileVersion
-  #define MyAppFileVersion "0.1.0.9"
+  #define MyAppFileVersion "1.0.1.0"
 #endif
 #define MyAppPublisher "Sentry Contributors"
 #define MyAppExeName "Sentry.exe"
