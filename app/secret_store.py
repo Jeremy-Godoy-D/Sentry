@@ -26,7 +26,7 @@ def protect(secret: str) -> str:
     if os.name != "nt":
         raise SecretStoreError("El guardado seguro de claves requiere Windows.")
     source, source_buffer = _blob(secret.encode("utf-8"))
-    entropy, entropy_buffer = _blob(b"Sentry-Ecuaconexion-v1")
+    entropy, entropy_buffer = _blob(b"Sentry-App-v1")
     output = DATA_BLOB()
     crypt32 = ctypes.windll.crypt32
     if not crypt32.CryptProtectData(ctypes.byref(source), "Sentry", ctypes.byref(entropy), None, None, 0,
@@ -49,7 +49,7 @@ def unprotect(encrypted: str) -> str:
     except ValueError as exc:
         raise SecretStoreError("La clave guardada está dañada.") from exc
     source, source_buffer = _blob(raw)
-    entropy, entropy_buffer = _blob(b"Sentry-Ecuaconexion-v1")
+    entropy, entropy_buffer = _blob(b"Sentry-App-v1")
     output = DATA_BLOB()
     if not ctypes.windll.crypt32.CryptUnprotectData(ctypes.byref(source), None, ctypes.byref(entropy),
                                                    None, None, 0, ctypes.byref(output)):

@@ -17,7 +17,7 @@ def application_icon_path() -> Path:
 def main() -> int:
     if sys.platform == "win32":
         try:
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Ecuaconexion.Sentry")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Sentry.App")
         except (AttributeError, OSError):
             pass
     try:
@@ -33,7 +33,7 @@ def main() -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(APP_VERSION)
-    app.setOrganizationName("Ecuaconexión")
+    app.setOrganizationName("Sentry")
     # El mismo ICO multirresolución para el EXE, título y barra de tareas.
     window_icon = QIcon(str(application_icon_path()))
     app.setWindowIcon(window_icon)

@@ -63,7 +63,7 @@ class InstallerUpdateTests(unittest.TestCase):
             configuration = configuration.replace("Compression=lzma2/ultra64", "Compression=none")
             configuration = configuration.replace("[Setup]", "[Setup]\nUninstallable=no\nCreateUninstallRegKey=no")
             test_mutex = f"SentryTest-{uuid.uuid4().hex}"
-            configuration = configuration.replace("Ecuaconexion.Sentry", test_mutex)
+            configuration = configuration.replace("Sentry.App", test_mutex)
             script = folder / "test.iss"
             script.write_text(configuration, encoding="utf-8-sig")
             self.run_hidden([str(ISCC), "/Q", str(script)])

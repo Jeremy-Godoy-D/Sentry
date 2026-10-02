@@ -83,7 +83,7 @@ class SentryWindowSmokeTest(unittest.TestCase):
         self.assertIn("Historial automático", notes.toPlainText())
         combo.setCurrentIndex(1)
         self.assertIn("Corrección anterior", notes.toPlainText())
-        self.assertIn("Jackson Ocaña", license_text())
+        self.assertIn("MIT License", license_text())
 
     def test_filters_selection_and_evidence_jump(self) -> None:
         self.assertEqual(self.window.call_list.count(), 0)

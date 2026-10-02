@@ -1,37 +1,21 @@
-LICENCIA PROPIETARIA DE SENTRY
+MIT License
 
-Copyright (c) 2026 Jackson Ocaña y Jeremy Godoy.
-Todos los derechos reservados.
+Copyright (c) 2026 Sentry Contributors
 
-1. TITULARIDAD
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Sentry, su código fuente, interfaz, documentación, recursos visuales y demás componentes son propiedad de sus autores y están destinados al uso interno de Ecuaconexión.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. USO AUTORIZADO
-
-Ecuaconexión y las personas expresamente autorizadas por ella pueden ejecutar y utilizar Sentry para sus operaciones internas de auditoría de llamadas. El uso autorizado no transfiere la propiedad del software.
-
-3. RESTRICCIONES
-
-Sin autorización previa y por escrito de los titulares, queda prohibido:
-
-- utilizar Sentry fuera de Ecuaconexión;
-- copiar, publicar, redistribuir o sublicenciar el software;
-- modificar, adaptar o crear trabajos derivados;
-- vender, alquilar, ofrecer como servicio o explotar comercialmente el software;
-- retirar avisos de propiedad, autoría o derechos reservados;
-- compartir el código, instaladores o recursos con terceros.
-
-4. INFORMACIÓN CONFIDENCIAL
-
-Las grabaciones, transcripciones, bases de clientes, credenciales, reportes y cualquier dato procesado por Sentry son confidenciales y deben mantenerse bajo los controles de acceso de Ecuaconexión. No deben publicarse ni compartirse fuera de la organización.
-
-5. AUTORIZACIONES ADICIONALES
-
-Cualquier permiso que no esté expresamente concedido en esta licencia requiere autorización escrita de los titulares.
-
-6. SIN GARANTÍA
-
-Sentry se distribuye para uso interno y en estado beta. Se proporciona "tal cual", sin garantías expresas o implícitas en la medida permitida por la legislación aplicable.
-
-Si existe una contradicción entre este archivo y una autorización escrita posterior, prevalece la autorización posterior para el alcance que indique.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

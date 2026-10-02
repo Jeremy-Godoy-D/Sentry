@@ -1,8 +1,8 @@
 # PLAN MAESTRO: SISTEMA AUTOMATIZADO DE ANÁLISIS DE LLAMADAS
 **Nombre Sugerido:** SentinelVoice / NovaAudit  
-**Entorno:** NAS Empresarial + APIs Cloud de Alta Rentabilidad + Base de Datos  
+**Entorno:** NAS Corporativo + APIs Cloud de Alta Rentabilidad + Base de Datos  
 **Fecha de Elaboración:** Septiembre 2026  
-**Confidencialidad:** Documento de Uso Interno Exclusivo  
+**Confidencialidad:** Documento Interno  
 
 ---
 

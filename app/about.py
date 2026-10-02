@@ -4,8 +4,8 @@ import sys
 
 APP_NAME = "Sentry"
 APP_VERSION = "0.1.0-beta.9"
-UPDATE_REPOSITORY = "jacksonandresrosales/Sentry"
-APP_AUTHORS = "Jackson Ocaña y Jeremy Godoy"
+UPDATE_REPOSITORY = "Jeremy-Godoy-D/Sentry"
+APP_AUTHORS = "Sentry Contributors"
 APP_DESCRIPTION = (
     "Auditoría de llamadas para una atención mejor informada. "
     "Sentry reúne grabaciones, transcripciones y evidencias en un solo lugar "
@@ -17,7 +17,7 @@ APP_FEATURES = (
     ("Menús solo con clic", "La rueda del mouse no cambia proveedor, modelo ni otros selectores. Esos listados se abren únicamente al hacer clic."),
     ("Notas automáticas", "Acerca de consulta en GitHub los cambios publicados para la versión instalada."),
     ("Historial de versiones", "El selector de versión permite revisar las novedades de publicaciones anteriores."),
-    ("Licencia integrada", "La licencia propietaria puede consultarse sin salir de la aplicación."),
+    ("Licencia integrada", "La licencia MIT puede consultarse sin salir de la aplicación."),
 )
 
 

@@ -1,10 +1,8 @@
 # 📋 ESPECIFICACIONES TÉCNICAS DEL SISTEMA (SPECS)
 **Proyecto:** Sentry (Centinela) - Sistema de Auditoría y Detección de Palabras Clave en Llamadas  
-**Rama:** `feat/Local-Ecuaconexion-Jackson`  
 **Fecha:** Septiembre 2026  
 **Tipo de Aplicación:** Aplicación de Escritorio Nativa (Windows)  
 **Entorno de Uso:** Uso interno empresarial (sin login inicial, diseñado para operador de calidad)  
-**Confidencialidad:** Privada / Propiedad Exclusiva de la Empresa  
 
 ---
 
@@ -177,10 +175,10 @@ Para evitar falsas alarmas, el sistema ejecuta un proceso de validación en 2 fa
 ## 8. POLÍTICA DE SEGURIDAD, PRIVACIDAD Y LICENCIA
 
 1. **Privacidad de Datos Sensibles:**
-   * **Zero Data Retention (ZDR):** Se configuran las peticiones de API para garantizar que ni Deepgram ni Google almacenen o re-entrenen modelos con los audios o transcripciones de la empresa.
+   * **Zero Data Retention (ZDR):** Se configuran las peticiones de API para garantizar que ni Deepgram ni Google almacenen o re-entrenen modelos con los audios o transcripciones.
    * **Enmascaramiento PII:** Cualquier número de tarjeta bancaria, cuenta o identificación es sustituido automáticamente por `[DATOS_PROTEGIDOS]`.
 2. **Tolerancia a Fallos:**
    * Reintentos automáticos con retroceso exponencial (*exponential backoff*) ante micro-cortes de conexión.
    * Si la app se cierra o se reinicia la PC, la base de datos retoma las llamadas en estado `PENDIENTE` sin perder información ni duplicar registros.
 3. **Licencia:**
-   * Software confidencial y propietario (`All Rights Reserved`) para uso exclusivo de la empresa. No es código abierto.
+   * Software bajo Licencia MIT. Código abierto para uso, modificación y distribución.

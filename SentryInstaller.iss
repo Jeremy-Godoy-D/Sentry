@@ -5,7 +5,7 @@
 #ifndef MyAppFileVersion
   #define MyAppFileVersion "0.1.0.9"
 #endif
-#define MyAppPublisher "Ecuaconexión"
+#define MyAppPublisher "Sentry Contributors"
 #define MyAppExeName "Sentry.exe"
 
 [Setup]
@@ -14,8 +14,8 @@ AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={localappdata}\Programs\Ecuaconexion\Sentry
-DefaultGroupName=Ecuaconexión\Sentry
+DefaultDirName={localappdata}\Programs\Sentry
+DefaultGroupName=Sentry
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir=dist
@@ -38,8 +38,8 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 Source: "dist\SentryApp\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Sentry"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Ecuaconexion.Sentry"
-Name: "{autodesktop}\Sentry"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Ecuaconexion.Sentry"; Tasks: desktopicon
+Name: "{autoprograms}\Sentry"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Sentry.App"
+Name: "{autodesktop}\Sentry"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Sentry.App"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos:"; Flags: unchecked
@@ -112,7 +112,7 @@ begin
     if Result <> '' then exit;
   end;
   if InstallationLock <> 0 then exit;
-  InstallationLock := CreateApplicationMutex(0, False, 'Ecuaconexion.Sentry');
+  InstallationLock := CreateApplicationMutex(0, False, 'Sentry.App');
   MutexError := LastProcessError;
   if (InstallationLock = 0) or (MutexError = 183) then begin
     ReleaseInstallationLock;

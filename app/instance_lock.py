@@ -11,7 +11,7 @@ from ctypes import wintypes
 import sys
 
 
-INSTANCE_MUTEX = "Ecuaconexion.Sentry"
+INSTANCE_MUTEX = "Sentry.App"
 ERROR_ALREADY_EXISTS = 183
 
 
