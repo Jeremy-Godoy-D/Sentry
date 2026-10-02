@@ -233,7 +233,7 @@ Las pruebas utilizan archivos y bases temporales y no deben modificar la informa
 | `SentryInstaller.iss` | Configuración de Inno Setup |
 | `ARQUITECTURA.md` | Diseño técnico y flujo de procesamiento |
 | `SPECS.md` | Reglas funcionales y de producto |
-| `LICENSE` | Licencia propietaria y condiciones de uso |
+| `LICENSE` | Licencia MIT |
 
 ## Seguridad y confidencialidad
 
