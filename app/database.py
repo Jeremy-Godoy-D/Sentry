@@ -18,7 +18,7 @@ _local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
 APP_STORAGE_ROOT = (
     Path(_configured_storage).expanduser().resolve()
     if _configured_storage
-    else (Path(_local_app_data) / "Ecuaconexion" / "Sentry").resolve()
+    else (Path(_local_app_data) / "Sentry").resolve()
     if getattr(sys, "frozen", False) and _local_app_data
     else Path(sys.executable).resolve().parent
     if getattr(sys, "frozen", False)

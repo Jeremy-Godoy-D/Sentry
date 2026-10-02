@@ -4,8 +4,8 @@ import sys
 
 APP_NAME = "Sentry"
 APP_VERSION = "1.0.1"
-UPDATE_REPOSITORY = "jacksonandresrosales/Sentry"
-APP_AUTHORS = "Jackson Ocaña y Jeremy Godoy"
+UPDATE_REPOSITORY = "Jeremy-Godoy-D/Sentry"
+APP_AUTHORS = "Sentry Contributors"
 APP_DESCRIPTION = (
     "Auditoría de llamadas para una atención mejor informada. "
     "Sentry reúne grabaciones, transcripciones y evidencias en un solo lugar "

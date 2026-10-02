@@ -1,15 +1,15 @@
 # PLAN MAESTRO: SISTEMA AUTOMATIZADO DE ANÁLISIS DE LLAMADAS
 **Nombre Sugerido:** SentinelVoice / NovaAudit  
-**Entorno:** NAS Empresarial + APIs Cloud de Alta Rentabilidad + Base de Datos  
+**Entorno:** NAS Corporativo + APIs Cloud de Alta Rentabilidad + Base de Datos  
 **Fecha de Elaboración:** Septiembre 2026  
-**Confidencialidad:** Documento de Uso Interno Exclusivo  
+**Confidencialidad:** Documento Interno  
 
 ---
 
 ## 1. RESUMEN EJECUTIVO
 
 El objetivo de este proyecto es construir un sistema automatizado de extremo a extremo que:
-1. **Monitoree el almacenamiento NAS** de la empresa donde se guardan las grabaciones de llamadas telefónicas (con duración promedio de 40 segundos a 1 minuto).
+1. **Monitoree el almacenamiento NAS** de la organización donde se guardan las grabaciones de llamadas telefónicas (con duración promedio de 40 segundos a 1 minuto).
 2. **Transcriba automáticamente el audio a texto en español** utilizando el modelo **Deepgram Nova-3**, identificando quién habla (Agente vs. Cliente) y protegiendo datos sensibles (tarjetas, identificaciones) de manera nativa.
 3. **Detecte palabras clave críticas** (como *"demanda"*, *"abogado"*, *"denuncia"*, *"queja"*, *"estafa"*).
 4. **Analice el contexto mediante un LLM económico (Gemini 1.5 Flash o GPT-4o-mini)** para descartar falsos positivos y medir el nivel de riesgo real y la satisfacción del cliente.
@@ -129,7 +129,7 @@ sentinel_voice/
 ├── requirements.txt      # Dependencias del proyecto
 ├── .env.example          # Plantilla de variables de entorno seguras
 ├── .gitignore            # Exclusión de audios, BD local y credenciales
-└── LICENSE.md            # Licencia propietaria confidencial de la empresa
+└── LICENSE.md            # Licencia MIT
 ```
 
 ---

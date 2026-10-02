@@ -60,7 +60,7 @@ class InstanceLockTests(unittest.TestCase):
             first.release()
 
     def test_name_is_the_installer_contract(self):
-        self.assertEqual(INSTANCE_MUTEX, "Ecuaconexion.Sentry")
+        self.assertEqual(INSTANCE_MUTEX, "Sentry.App")
 
 
 class MainInstanceGuardTests(unittest.TestCase):

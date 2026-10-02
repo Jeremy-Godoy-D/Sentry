@@ -1,10 +1,8 @@
 # 📋 ESPECIFICACIONES TÉCNICAS DEL SISTEMA (SPECS)
 **Proyecto:** Sentry (Centinela) - Sistema de Auditoría y Detección de Palabras Clave en Llamadas  
-**Rama:** `feat/Local-Ecuaconexion-Jackson`  
 **Fecha:** Septiembre 2026  
 **Tipo de Aplicación:** Aplicación de Escritorio Nativa (Windows)  
 **Entorno de Uso:** Uso interno empresarial (sin login inicial, diseñado para operador de calidad)  
-**Confidencialidad:** Privada / Propiedad Exclusiva de la Empresa  
 
 ---
 
@@ -49,14 +47,14 @@ Automatizar la auditoría de grabaciones telefónicas generadas por el conmutado
 |                            CAPA DE PRESENTACIÓN (UI)                              |
 |          PySide6 (Qt 6 para Python) • QtMultimedia • Empaquetado PyInstaller     |
 +-----------------------------------------------------------------------------------+
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 +-----------------------------------------------------------------------------------+
 |                        CAPA DE NEGOCIO Y ORQUESTACIÓN                             |
 |  Directorio Watcher • Máquina de Estados • Manejo de Reintentos (Tenacity)       |
 +-----------------------------------------------------------------------------------+
-        │                                 │                                 │
-        ▼                                 ▼                                 ▼
+         │                                 │                                 │
+         ▼                                 ▼                                 ▼
 +─────────────────+             +──────────────────+             +──────────────────+
 |  TRANSCRIPCIÓN  |             | INTELIGENCIA LLM |             |   PERSISTENCIA   |
 | Deepgram Nova-3 |             | Gemini 1.5 Flash |             |     SQLite 3     |
@@ -100,11 +98,11 @@ El sistema **no depende de una ruta rígida de red**, sino que ofrece flexibilid
 ### Tabla `calls` (Registro Principal de Llamadas)
 * `id` INTEGER PRIMARY KEY AUTOINCREMENT
 * `filename` TEXT NOT NULL (Nombre del archivo de audio)
-* `file_path` TEXT NOT NULL (Ruta completa en el directorio)
+* `file_path` TEXT NOT NULL UNIQUE (Ruta completa en el directorio)
 * `file_hash` TEXT UNIQUE (Hash SHA-256 para evitar reprocesar archivos duplicados)
 * `duration_seconds` INTEGER (Duración en segundos)
 * `status` TEXT CHECK(status IN ('PENDIENTE', 'TRANSFIRIENDO', 'ANALIZANDO', 'COMPLETADO', 'ERROR'))
-* `transcript` TEXT (Transcripción con etiquetas de agente y cliente)
+* `transcript` TEXT (Transcripción completa con etiquetas de agente y cliente)
 * `summary` TEXT (Resumen ejecutivo de 2 líneas)
 * `sentiment` TEXT (POSITIVO, NEUTRAL, MOLESTO, CRÍTICO)
 * `risk_level` TEXT CHECK(risk_level IN ('BAJO', 'MEDIO', 'ALTO', 'CRÍTICO'))
@@ -136,7 +134,7 @@ Para evitar falsas alarmas, el sistema ejecuta un proceso de validación en 2 fa
 2. **Fase 2: Validación Semántica con Gemini 1.5 Flash:**
    * **Prompt del Sistema:** Analiza si la mención de *"demanda"* corresponde a una amenaza de acción legal por parte del cliente o a una conversación comercial cotidiana.
    * **Ejemplo de Riesgo Crítico (Alerta Roja):**
-     > *"Si hoy no me devuelven mi dinero voy a presentar una demanda con mi abogado."*  
+     > *"Si hoy no me cancelan la cuenta voy a presentar una demanda con mi abogado."*  
      > ➔ `has_sensitive_keyword: true`, `risk_level: "CRÍTICO"`.
    * **Ejemplo de Falso Positivo (Normal):**
      > *"Este producto tiene mucha demanda en el mercado."*  
@@ -177,10 +175,10 @@ Para evitar falsas alarmas, el sistema ejecuta un proceso de validación en 2 fa
 ## 8. POLÍTICA DE SEGURIDAD, PRIVACIDAD Y LICENCIA
 
 1. **Privacidad de Datos Sensibles:**
-   * **Zero Data Retention (ZDR):** Se configuran las peticiones de API para garantizar que ni Deepgram ni Google almacenen o re-entrenen modelos con los audios o transcripciones de la empresa.
+   * **Zero Data Retention (ZDR):** Se configuran las peticiones de API para garantizar que ni Deepgram ni Google almacenen o re-entrenen modelos con los audios o transcripciones.
    * **Enmascaramiento PII:** Cualquier número de tarjeta bancaria, cuenta o identificación es sustituido automáticamente por `[DATOS_PROTEGIDOS]`.
 2. **Tolerancia a Fallos:**
    * Reintentos automáticos con retroceso exponencial (*exponential backoff*) ante micro-cortes de conexión.
    * Si la app se cierra o se reinicia la PC, la base de datos retoma las llamadas en estado `PENDIENTE` sin perder información ni duplicar registros.
 3. **Licencia:**
-   * Software confidencial y propietario (`All Rights Reserved`) para uso exclusivo de la empresa. No es código abierto.
+   * Software bajo Licencia MIT. Código abierto para uso, modificación y distribución.

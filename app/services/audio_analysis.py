@@ -281,7 +281,7 @@ def assign_roles(transcript: dict) -> dict:
         ("con quien tengo el gusto", 4), ("me confirma", 2), ("indiqueme", 2),
         ("permitame validar", 2), ("voy a validar", 2), ("voy a revisar", 2),
         ("numero de caso", 2), ("gracias por comunicarse", 4), ("gracias por llamar", 4),
-        ("bienvenido a", 3), ("ecuaconexion", 4),
+        ("bienvenido a", 3), ("atencion al cliente", 4),
     )
     customer_phrases = (
         ("llamo porque", 4), ("llamo por", 3), ("quiero cancelar", 3), ("quiero dar de baja", 3),

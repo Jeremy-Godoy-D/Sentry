@@ -1023,10 +1023,10 @@ class SentryWindow(QMainWindow):
         brand.setSpacing(8)
         logo = QLabel()
         logo.setObjectName("brandLogo")
-        logo.setAccessibleName("Logo de Ecuaconexión")
+        logo.setAccessibleName("Logo de Sentry")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         logo.setFixedSize(42, 34)
-        logo_path = assets_path / "ecuaconexion-logo.png"
+        logo_path = assets_path / "sentry-logo.png"
         logo.setPixmap(
             QPixmap(str(logo_path)).scaled(
                 40,
